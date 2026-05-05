@@ -1,11 +1,9 @@
 // src/index.ts
-import { serve } from "@hono/node-server";
 import { Hono } from "hono";
 import { pipeline, FeatureExtractionPipeline } from "@huggingface/transformers";
 
 const app = new Hono();
 
-// Load once on startup — warm forever
 console.log("Loading model...");
 let embedder: FeatureExtractionPipeline | undefined;
 
@@ -34,7 +32,6 @@ app.post("/embed", async (c) => {
   const t0 = performance.now();
   const output = await embedder(value, { pooling: "mean", normalize: true });
   const inferenceMs = parseFloat((performance.now() - t0).toFixed(2));
-
   const embedding = Array.from(output.data as Float32Array);
 
   return c.json({
@@ -71,7 +68,6 @@ app.post("/embed-many", async (c) => {
     values.map((v) => embedder!(v, { pooling: "mean", normalize: true })),
   );
   const inferenceMs = parseFloat((performance.now() - t0).toFixed(2));
-
   const embeddings = outputs.map((o) => Array.from(o.data as Float32Array));
 
   return c.json({
@@ -85,12 +81,8 @@ app.post("/embed-many", async (c) => {
   });
 });
 
-serve(
-  {
-    fetch: app.fetch,
-    port: 3000,
-  },
-  (info) => {
-    console.log(`Server is running on http://localhost:${info.port}`);
-  },
-);
+// Bun's native server — no adapter needed
+export default {
+  port: 3000,
+  fetch: app.fetch,
+};
